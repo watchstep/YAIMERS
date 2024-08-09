@@ -1,9 +1,5 @@
 # 🫸 YAImers - LG Aimers Hackathon 🫷
 
-## Introduction
-Welcome to the YAImers team's repository for the LG Aimers Hackathon. 
-We are a group of five passionate members from the YAI , driven by our shared love for AI and innovation. 
-
 ## Team Members
 
 - **👧Juii Kim** - Data Scientist, Data Analyst
