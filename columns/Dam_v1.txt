@@ -76,6 +76,3 @@
 "PalletID Collect Result Bins_Dam"
 "Production Qty Collect Result Bins_Dam"
 "Receip No Collect Result Bins_Dam"
-"Mean Stage1 Line Distance Speed Collect Result_Dam"
-"Mean Stage2 Line Distance Speed Collect Result_Dam"
-"Mean Stage3 Line Distance Speed Collect Result_Dam"

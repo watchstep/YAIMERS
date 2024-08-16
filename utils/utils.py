@@ -13,11 +13,11 @@ def get_columns_group(df:pd.DateOffset):
     
     return grouped_columns
 
-# utils.columns_to_txt(df, col_name="Dam")
+# utils.columns_to_txt(df, col_name="Fill1")
 def columns_to_txt(df:pd.DataFrame, col_name:str, version=1):
     df_col = df.loc[:, df.columns.str.contains(f"_{col_name}")]
     
-    with open(os.path.join("./columns", f"{col_name}_{version}.txt"), "w") as f:
+    with open(os.path.join("./columns", f"{col_name}_v{version}.txt"), "w") as f:
         for col in df_col.columns:
             f.write('"'+ col + '"' + "\n")
             
