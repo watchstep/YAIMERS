@@ -175,6 +175,10 @@ def preprocessing_v1(file_name:str, version=1):
     
     df["DISCHARGED TIME OF RESIN(Stage2) Collect Result Bins_Fill1"] = kb.fit_transform(df["DISCHARGED TIME OF RESIN(Stage2) Collect Result_Fill1"].values.reshape(-1,1))
     
+    kb = KBinsDiscretizer(n_bins=3, encode='ordinal', strategy='quantile', random_state=RANDOM_SEED)
+    
+    df["DISCHARGED TIME OF RESIN(Stage3) Collect Result Bins_Fill1"] = kb.fit_transform(df["DISCHARGED TIME OF RESIN(Stage3) Collect Result_Fill1"].values.reshape(-1,1))
+
     kb = KBinsDiscretizer(n_bins=4, encode='ordinal', strategy='quantile', random_state=RANDOM_SEED)
     
     df["Dispense Volume(Stage1) Collect Result Bins_Fill1"] = kb.fit_transform(df["Dispense Volume(Stage1) Collect Result_Fill1"].values.reshape(-1,1))
@@ -279,3 +283,5 @@ def preprocessing_v1(file_name:str, version=1):
     
     # save csv
     df.to_csv(os.path.join(ROOT_DIR, f"{file_name}_v{version}.csv"), index=False)
+    
+preprocessing_v1("test")
