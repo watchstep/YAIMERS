@@ -3,7 +3,7 @@
 ## Team Members
 
 - **👧Juii Kim** - Data Scientist, Data Analyst
-- **👩Junseo Ha** - Data Scientist, Data Analyst
+- **👩Joonseo Ha** - Data Scientist, Data Analyst
 - **🧒Jeongmin Seo** - Machine Learning Engineer, AI Researcher
 - **👦Heejae Jeon** - Data Analyst, AI Researcher
 - **👱‍♀️Hari Kang** - Deep Learning Engineer, AI Researcher
