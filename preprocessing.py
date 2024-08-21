@@ -15,7 +15,7 @@ ROOT_DIR = "./data"
 RANDOM_SEED = 110
 np.random.seed(RANDOM_SEED)
 
-def preprocessing_v1(file_name:str, version=1):
+def preprocessing_test(file_name:str, version=1):
     # read csv
     df = pd.read_csv(os.path.join(ROOT_DIR, f"{file_name}.csv"))
     
@@ -42,7 +42,7 @@ def preprocessing_v1(file_name:str, version=1):
     df["Model.Suffix"] = df["Model.Suffix_Dam"]
     model_suffix = [f"Model.Suffix_{cat}" for cat in CAT]
     df.drop(model_suffix, axis=1, inplace=True)
-    
+
     insp_seq_no = [f"Insp. Seq No._{cat}" for cat in CAT]
     df.drop(insp_seq_no, axis=1, inplace=True)
     
@@ -67,14 +67,7 @@ def preprocessing_v1(file_name:str, version=1):
                              "3rd Pressure Unit Time_AutoClave",]]
     df["Mean Pressure Unit Time_AutoClave"] = pressure_unit_time.apply("mean", axis=1).astype('int64')
     
-    Q1 = df['3rd Pressure Collect Result_AutoClave'].quantile(0.25)
-    Q3 = df['3rd Pressure Collect Result_AutoClave'].quantile(0.75)
-    IQR = Q3 - Q1
-    
-    lower_bound = Q1 - 1.5 * IQR
-    upper_bound = Q3 + 1.5 * IQR
-    df = df[(df['3rd Pressure Collect Result_AutoClave'] >= lower_bound) & (df['3rd Pressure Collect Result_AutoClave'] <= upper_bound)]
-    
+
     pressure_collect_result = df[["1st Pressure Collect Result_AutoClave", 
                                   "2nd Pressure Collect Result_AutoClave",
                                   "3rd Pressure Collect Result_AutoClave",]]
@@ -284,4 +277,4 @@ def preprocessing_v1(file_name:str, version=1):
     # save csv
     df.to_csv(os.path.join(ROOT_DIR, f"{file_name}_v{version}.csv"), index=False)
     
-preprocessing_v1("test")
+preprocessing_test("test")
