@@ -10,6 +10,7 @@ import argparse
 import numpy as np
 import pandas as pd
 
+# https://contrib.scikit-learn.org/category_encoders/index.html
 import category_encoders as ce
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, PowerTransformer, QuantileTransformer
@@ -133,7 +134,7 @@ elif config.scaler == "qt":
 #################################  DOWN SAMPLING  ###############################
 downsample_options = {1:"nearmiss", 2:"cluster", 3:"allknn", 4:"oneside", 5:"tomek"}
 
-downsampled_df_tr = utils.downsample(X_tr, y_tr, method=downsample_options[config.downsampling], random_seed=config.seed)
+downsampled_df_tr = resampling.downsample(X_tr, y_tr, method=downsample_options[config.downsampling], random_seed=config.seed)
 
 
 #################################  UP SAMPLING  ###############################
@@ -143,7 +144,7 @@ cat_idx = [downsampled_df_tr.columns.get_loc(col) for col in cat_features]
 X_tr = downsampled_df_tr.drop("target", axis=1)
 y_tr = downsampled_df_tr["target"]
 
-upsampled_df_tr = utils.upsample(X_tr, y_tr, cat_idx=cat_idx, method=upsample_options[config.upsampling], random_seed=config.seed)
+upsampled_df_tr = resampling.upsample(X_tr, y_tr, cat_idx=cat_idx, method=upsample_options[config.upsampling], random_seed=config.seed)
 
 ## RESAMPLED DATA
 # X_tr = downsampled_df_tr.drop("target", axis=1)
@@ -216,7 +217,7 @@ else:
 if config.tune_mode and config.model == "cat":
     
     cat_study = optuna.create_study(direction='maximize')
-    cat_study.optimize(utils.catboost_objective(X_tr_selec, y_tr), n_trials=15)
+    cat_study.optimize(tuning.catboost_objective(X_tr_selec, y_tr), n_trials=15)
     
     cat_best_params = cat_study.best_params
     cat_best_score = cat_study.best_value
@@ -229,7 +230,7 @@ if config.tune_mode and config.model == "cat":
 elif config.tune_mode and config.model == "lgbm":
     
     lgbm_study = optuna.create_study(direction='maximize')
-    lgbm_study.optimize(utils.lgbm_objective(X_tr_selec, y_tr), n_trials=15)
+    lgbm_study.optimize(tuning.lgbm_objective(X_tr_selec, y_tr), n_trials=15)
     
     lgbm_best_params = lgbm_study.best_params
     lgbm_best_score= lgbm_study.best_value
