@@ -15,7 +15,7 @@ ROOT_DIR = "./data"
 RANDOM_SEED = 110
 np.random.seed(RANDOM_SEED)
 
-def preprocessing_test(file_name:str, version=2):
+def preprocessing(file_name:str, version=2):
     # read csv
     df = pd.read_csv(os.path.join(ROOT_DIR, f"{file_name}.csv"))
     
