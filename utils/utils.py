@@ -20,7 +20,7 @@ def columns_to_txt(df:pd.DataFrame, col_name:str, version=1):
     with open(os.path.join("./columns", f"{col_name}_v{version}.txt"), "w") as f:
         for col in df_col.columns:
             f.write('"'+ col + '"' + "\n")
-            
+    
             
 # plt.figure(figsize=(8, 5))
 # sns.heatmap(df.corr(), annot=True, cmap='coolwarm', vmin=-1, vmax=1)

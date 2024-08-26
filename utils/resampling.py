@@ -13,10 +13,12 @@ from imblearn.over_sampling import (RandomOverSampler,
                                     SMOTE,
                                     ADASYN,
                                     SMOTENC,
+                                    SMOTEN,
                                     BorderlineSMOTE,
-                                    KMeansSMOTE)
+                                    KMeansSMOTE,
+                                    SVMSMOTE)
 from imblearn.combine import SMOTEENN
-
+# https://imbalanced-learn.org/stable/references/index.html
 
 def random_downsample(df, random_seed, sample_ratio=1.0):
     df_normal = df[df["target"] == 0] 
@@ -63,33 +65,47 @@ def downsample(X, y, method, random_seed):
     print('DOWN SAMPLING')
     print('=============')
     print('Original dataset shape %s' % Counter(y))
-    print('Resampled dataset shape %s' % Counter(y_downsampled))
+    print('Resampled dataset shape %s' % Counter(y_downsampled), end='\n')
     
     return downsampled_df
+
 
 def upsample(X, y, cat_idx, method, random_seed):
     
     if method == "random":
         ros = RandomOverSampler(random_state=random_seed)
         X_upsampled, y_upsampled = ros.fit_resample(X, y)
+        
     # SMOTE
-    if method == "smote":
+    elif method == "smote":
         smote = SMOTE(random_state=random_seed)
         X_upsampled, y_upsampled = smote.fit_resample(X, y)
+        
     # ADASYN
     elif method == "adasyn":
         adasyn = ADASYN(random_state=random_seed)
         X_upsampled, y_upsampled = adasyn.fit_resample(X, y)
-    # SMOTE-NC (both numerical & categorical features)
+        
+    # SMOTE-NC
     elif method == "smotenc":
         smotenc = SMOTENC(random_state=random_seed, sampling_strategy="auto", categorical_features=cat_idx)
         X_upsampled, y_upsampled = smotenc.fit_resample(X, y)
+        
+    elif method == "smoten":
+        smoten = SMOTEN(random_state=random_seed, sampling_strategy="auto", k_neighbors=5)
+        X_upsampled, y_upsampled = smoten.fit_resample(X, y)
+        
     elif method == "borderline":
         borderline_smote = BorderlineSMOTE(random_state=random_seed)
         X_upsampled, y_upsampled = borderline_smote.fit_resample(X, y)
+        
     elif method == "kmeans":
-        kmeans_smote = KMeansSMOTE(random_state=random_seed)
+        kmeans_smote = KMeansSMOTE(random_state=random_seed, sampling_strategy="auto", k_neighbors=5)
         X_upsampled, y_upsampled = kmeans_smote.fit_resample(X, y)
+        
+    elif method == "svm":
+        svm_smote = SVMSMOTE(random_state=42)
+        X_upsampled, y_upsampled = svm_smote.fit_resample(X, y)
         
     X_upsampled_df= pd.DataFrame(X_upsampled, columns=X.columns)
     y_upsampled_df = pd.Series(y_upsampled, name="target") 
@@ -98,6 +114,6 @@ def upsample(X, y, cat_idx, method, random_seed):
     print('UP SAMPLNG')
     print('==========')
     print('Original dataset shape %s' % Counter(y))
-    print('Resampled dataset shape %s' % Counter(y_upsampled))
+    print('Resampled dataset shape %s' % Counter(y_upsampled), end='\n')
     
     return upsampled_df

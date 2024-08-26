@@ -15,7 +15,7 @@ ROOT_DIR = "./data"
 RANDOM_SEED = 110
 np.random.seed(RANDOM_SEED)
 
-def preprocessing_test(file_name:str, version=1):
+def preprocessing_test(file_name:str, version=2):
     # read csv
     df = pd.read_csv(os.path.join(ROOT_DIR, f"{file_name}.csv"))
     
@@ -273,6 +273,9 @@ def preprocessing_test(file_name:str, version=1):
     kb = KBinsDiscretizer(n_bins=10, encode='ordinal', strategy='kmeans', random_state=RANDOM_SEED)
     
     df["Receip No Collect Result Bins_Fill2"] = kb.fit_transform(df["Receip No Collect Result_Fill2"].values.reshape(-1,1))
+    
+    # drop 
+    df.drop(["Workorder"], axis=1, inplace=True)
     
     # save csv
     df.to_csv(os.path.join(ROOT_DIR, f"{file_name}_v{version}.csv"), index=False)

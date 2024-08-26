@@ -44,13 +44,13 @@ parser.add_argument('--seed',type=int, default=110)
 
 parser.add_argument('--model', type=str, default='cat')
 
-parser.add_argument('-en', '--encoder', type=str, default='le')
-parser.add_argument('-s', '--scaler', type=str, default='mms')
+parser.add_argument('-en', '--encoder', type=str, default='js')
+parser.add_argument('-s', '--scaler', type=str, default='ss')
 
 downsample_options = {1:"nearmiss", 2:"cluster", 3:"allknn", 4:"oneside", 5:"tomek"}
 parser.add_argument('-ds', '--downsampling', type=int, default=5)
 
-upsample_options = {1: "random", 2:"smote", 3:"adasyn", 4:"smotenc", 5:"borderline", 6:"kmeans"}
+upsample_options = {1: "random", 2:"smote", 3:"adasyn", 4:"smotenc", 5:"smoten", 6:"borderline", 7:"kmeans", 8:"svm"}
 parser.add_argument('-us', '--upsampling', type=int, default=4)
 
 parser.add_argument('--fs_mode', type=bool, default=False, help='feature selection T:auto F:manual')
@@ -58,7 +58,7 @@ parser.add_argument('--estimator', type=str, default='extra', help="using for fe
 parser.add_argument('--selector', type=str, default='sfm', help='auto feature selector')
 
 parser.add_argument('--check_all', type=bool, default=False)
-parser.add_argument('--tune_mode', type=bool, default=False, help='optuna tuning')
+parser.add_argument('--tune_mode', type=bool, default=True, help='optuna tuning')
 
 config = parser.parse_args([])
 
@@ -116,13 +116,29 @@ if config.encoder == "le":
     for cat_feature in cat_features:
         X_tr[cat_feature] = le.fit_transform(X_tr[cat_feature])
         X_te[cat_feature] = le.transform(X_te[cat_feature])
+        
+elif config.encoder == "js":
+    js = ce.JamesSteinEncoder(cols=cat_features)
+    
+    X_tr = js.fit_transform(X_tr, y_tr)
+    X_te = js.transform(X_te)
+    
+elif config.encoder == "woe":
+    woe = ce.WOEEncoder(cols=cat_features)
+    
+    X_tr = woe.fit_transform(X_tr, y_tr)
+    X_te = woe.transform(X_te)
 
 ## SCALING
 if config.scaler == "mms":
     mms = MinMaxScaler()
-    
     X_tr[num_features] = mms.fit_transform(X_tr[num_features])
     X_te[num_features] = mms.transform(X_te[num_features])
+    
+elif config.scaler == "ss":
+    ss = StandardScaler()
+    X_tr[num_features] = ss.fit_transform(X_tr[num_features])
+    X_te[num_features] = ss.transform(X_te[num_features])
     
 elif config.scaler == "qt":
     qt = QuantileTransformer(random_state=config.seed) # n_quantiles = 1000
@@ -132,14 +148,10 @@ elif config.scaler == "qt":
 
 
 #################################  DOWN SAMPLING  ###############################
-downsample_options = {1:"nearmiss", 2:"cluster", 3:"allknn", 4:"oneside", 5:"tomek"}
-
 downsampled_df_tr = resampling.downsample(X_tr, y_tr, method=downsample_options[config.downsampling], random_seed=config.seed)
 
 
 #################################  UP SAMPLING  ###############################
-upsample_options = {1: "random", 2:"smote", 3:"adasyn", 4:"smotenc", 5:"borderline", 6:"kmeans"}
-
 cat_idx = [downsampled_df_tr.columns.get_loc(col) for col in cat_features]
 X_tr = downsampled_df_tr.drop("target", axis=1)
 y_tr = downsampled_df_tr["target"]
@@ -190,7 +202,7 @@ else:
     
 print("FEATRUE SELECTION")
 print("Before ", X_tr.shape)
-print("After ", X_tr_selec.shape)
+print("After ", X_tr_selec.shape, end='\n')
 
 ###############################  EVALUATION  ############################
 stk = StratifiedKFold(n_splits=5, random_state=config.seed, shuffle=True)
@@ -205,25 +217,50 @@ if config.check_all:
         score_dic[clf_name] = scores.mean()
     
     print("MODEL CHECK")
-    print(score_dic)
+    print(score_dic, end='\n')
     
 else:
     scores = cross_val_score(classifiers["cat"], X_tr_selec, y_tr, scoring="f1", cv=stk)
     
     print("MODEL CHECK")
-    print('F1', scores.mean())
+    print('F1', scores.mean(), end='\n')
+
+def catboost_objective(trial):
+    params = {
+        'n_estimators': trial.suggest_int('n_estimators', 100, 1000),
+        'learning_rate': trial.suggest_loguniform('learning_rate', 0.0001, 0.2),
+        'max_depth': trial.suggest_int('max_depth', 3, 15),
+        'subsample': trial.suggest_uniform('subsample', 0.5, 1.0),
+        'colsample_bylevel': trial.suggest_uniform('colsample_bylevel', 0.5, 1.0),
+        'od_type': trial.suggest_categorical("od_type", ["IncToDec", "Iter"]),
+        'od_wait': trial.suggest_int("od_wait", 10, 50),
+    }
+
+    cat_clf = CatBoostClassifier(**params, random_state=config.seed, auto_class_weights="Balanced",) # eval_metric="TotalF1"
     
+    stk = StratifiedKFold(n_splits=5, random_state=config.seed, shuffle=True)
+    f1_scores = np.empty(5)
+    
+    for idx, (tr_idx, val_idx) in enumerate(stk.split(X_tr_selec, y_tr)):
+        X_tr_fold, X_val_fold = X_tr.iloc[tr_idx], X_tr.iloc[val_idx]
+        y_tr_fold, y_val_fold = y_tr.iloc[tr_idx], y_tr.iloc[val_idx]
+        
+        cat_clf.fit(X_tr_fold, y_tr_fold, eval_set=[(X_val_fold, y_val_fold)], early_stopping_rounds=50, verbose=False)
+        y_pred_fold = cat_clf.predict(X_val_fold)
+        f1_scores[idx] = f1_score(y_val_fold, y_pred_fold)
+
+    return np.mean(f1_scores) 
     
 if config.tune_mode and config.model == "cat":
     
     cat_study = optuna.create_study(direction='maximize')
-    cat_study.optimize(tuning.catboost_objective(X_tr_selec, y_tr), n_trials=15)
+    cat_study.optimize(catboost_objective, n_trials=15)
     
     cat_best_params = cat_study.best_params
     cat_best_score = cat_study.best_value
     
     print("CatBoost Best Hyperparams: ", cat_best_params)
-    print("CatBoost Best F1 Score: ", cat_best_score)
+    print("CatBoost Best F1 Score: ", cat_best_score, end='\n')
     
     final_clf = CatBoostClassifier(**cat_best_params, random_state=config.seed, auto_class_weights="Balanced",)
     
@@ -236,9 +273,9 @@ elif config.tune_mode and config.model == "lgbm":
     lgbm_best_score= lgbm_study.best_value
     
     print("LGBM Best Hyperparams: ",lgbm_best_params)
-    print("LGBM Best F1 Score: ", lgbm_best_score)
+    print("LGBM Best F1 Score: ", lgbm_best_score, end='\n')
     
-    final_clf = LGBMClassifier(**lgbm_best_params, random_state=config.seed)
+    final_clf = LGBMClassifier(**lgbm_best_params, random_state=config.seed,)
     
 else:
     final_clf = classifiers[config.model]
@@ -246,7 +283,7 @@ else:
 ################################################################
 #####################     SUBMISSION   #########################
 ################################################################
-final_clf.fit(X_tr_selec, y_tr, use_best_model=True)
+final_clf.fit(X_tr_selec, y_tr, ) # use_best_model=True
 final_preds = final_clf.predict(X_te_selec)
 
 df_sub = pd.read_csv(os.path.join(config.data_path, "submission.csv"))
@@ -257,4 +294,8 @@ print('=============================')
 print(df_sub["target"].value_counts())
 
 curr_date = datetime.now().strftime("%m-%d_%H-%M-%S")
-df_sub.to_csv(os.path.join(config.data_path, f"submission_{curr_date}.csv"))
+# df_sub.to_csv(os.path.join(config.data_path, f"submission_{curr_date}.csv"), index=False)
+df_sub.to_csv(os.path.join(config.data_path, f"le_mms_tomek_smoten_cat.csv"))
+
+
+# {'n_estimators': 275, 'learning_rate': 0.12690114610168876, 'max_depth': 9, 'subsample': 0.6224073667490215, 'colsample_bylevel': 0.5427716173358497, 'od_type': 'Iter', 'od_wait': 19}.
